@@ -1,0 +1,10 @@
+#!/bin/sh
+
+TIME=$1
+shift
+
+while true
+do
+	$@
+	sleep $TIME
+done
