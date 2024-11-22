@@ -19,6 +19,9 @@ struct Process {
 	int   stextresv;
 };
 static Process *list = NULL;
+
+static const char *leftpad   = "";
+static const char *rightpad  = "";
 static const char *separator = " | ";
 
 int
@@ -128,10 +131,16 @@ main(int argc, char *argv[])
 
 	FD_ZERO(&rdset);
 
-	while((c = getopt(argc, argv, "c:s:")) > 0) {
+	while((c = getopt(argc, argv, "c:s:l:r:")) > 0) {
 		switch(c) {
 		case 's':
 			separator = optarg;
+			break;
+		case 'l':
+			leftpad = optarg;
+			break;
+		case 'r':
+			rightpad = optarg;
 			break;
 		case 'c':
 			p = newproc(optarg);
@@ -171,10 +180,10 @@ main(int argc, char *argv[])
 				}
 			}
 
+		printf("%s", leftpad);
 		for(Process *p = list; p; p = p->next)
 			printf("%s%s", p->stext, p->next ? separator : "");
-
-		printf("\n");
+		printf("%s\n", rightpad);
 		fflush(stdout);
 	}
 	
