@@ -14,8 +14,9 @@ typedef struct Process Process;
 struct Process {
 	pid_t pid;
 	int fd;
-	char str[64];
 	Process *next;
+	char *stext;
+	int   stextresv;
 };
 static Process *list = NULL;
 
@@ -59,6 +60,8 @@ newproc(const char *command)
 		memset(p, 0, sizeof *p);
 		p->pid = pid;
 		p->fd = pipes[0];
+		p->stext = malloc(1);
+		p->stextresv = 1;
 		return p;
 	}
 }
@@ -79,23 +82,31 @@ sigtrap(int sig)
 }
 
 int
-linerd(int fd, char *line, int linesize)
+linerd(Process *p)
 {
 	int i;
-	
-	for(i = 0; i < linesize; i++) {
-		char c;
-		if(read(fd, &c, sizeof c) <= 0) {
+	char c;
+
+	for(i = 0;; i++) {
+		if(read(p->fd, &c, sizeof c) <= 0) {
 			break;
 		}
 
+		if(i >= p->stextresv) {
+			p->stextresv *= 2;
+			p->stext = realloc(p->stext, p->stextresv);
+			if(!p->stext) {
+				perror("realloc()");
+				exit(EXIT_FAILURE);
+			}
+		}
+
 		if(c == '\n') {
-			line[i] = 0;
+			p->stext[i] = 0;
 			break;
 		}
-		line[i] = c;
+		p->stext[i] = c;
 	}
-	line[linesize - 1] = 0;
 	return i;
 }
 
@@ -146,14 +157,14 @@ main(int argc, char *argv[])
 
 		for(Process *p = list; p; p = p->next)
 			if(FD_ISSET(p->fd, &copy)) {
-				if(linerd(p->fd, p->str, sizeof p->str) <= 0) {
+				if(linerd(p) <= 0) {
 					FD_CLR(p->fd, &rdset);
 					close(p->fd);
 				}
 			}
 
 		for(Process *p = list; p; p = p->next)
-			printf("%s%s", p->str, p->next ? " | " : "");
+			printf("%s%s", p->stext, p->next ? " | " : "");
 
 		printf("\n");
 		fflush(stdout);
