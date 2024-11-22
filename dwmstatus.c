@@ -19,6 +19,7 @@ struct Process {
 	int   stextresv;
 };
 static Process *list = NULL;
+static const char *separator = " | ";
 
 int
 max(int a, int b)
@@ -127,8 +128,11 @@ main(int argc, char *argv[])
 
 	FD_ZERO(&rdset);
 
-	while((c = getopt(argc, argv, "c:")) > 0) {
+	while((c = getopt(argc, argv, "c:s:")) > 0) {
 		switch(c) {
+		case 's':
+			separator = optarg;
+			break;
 		case 'c':
 			p = newproc(optarg);
 			FD_SET(p->fd, &rdset);
@@ -168,7 +172,7 @@ main(int argc, char *argv[])
 			}
 
 		for(Process *p = list; p; p = p->next)
-			printf("%s%s", p->stext, p->next ? " | " : "");
+			printf("%s%s", p->stext, p->next ? separator : "");
 
 		printf("\n");
 		fflush(stdout);
