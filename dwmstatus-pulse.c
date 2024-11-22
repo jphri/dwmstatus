@@ -4,9 +4,10 @@
 #include <pulse/pulseaudio.h>
 #include <unistd.h>
 
-static char *default_label = "";
-static char *label = NULL;
 static char *device_name = NULL;
+
+static char *mute_fmt = "MUTE";
+static char *volume_fmt = "%0.0f";
 
 static void
 sinkcbk(pa_context *ctx, const pa_sink_info *i, int eol, void *userdata)
@@ -15,10 +16,8 @@ sinkcbk(pa_context *ctx, const pa_sink_info *i, int eol, void *userdata)
 		return;
 
 	float volume = (float)pa_cvolume_avg(&i->volume) / (float)PA_VOLUME_NORM;
-	if(i->mute)
-		printf("MUTE\n");
-	else
-		printf("%s%0.0f\n", label, volume * 100);
+	printf(i->mute ? mute_fmt : volume_fmt, volume * 100);
+	printf("\n");
 	fflush(stdout);
 }
 
@@ -49,15 +48,16 @@ main(int argc, char *argv[])
 	pa_context_state_t state;
 	pa_operation *op;
 
-	label = default_label;
-	while((c = getopt(argc, argv, "d:l:")) > 0) {
+	while((c = getopt(argc, argv, "d:f:m:")) > 0) {
 		switch(c) {
 		case 'd':
 			device_name = strdup(optarg);
 			break; 
-		case 'l':
-			label = strdup(optarg);
+		case 'f':
+			volume_fmt = optarg;
 			break;
+		case 'm':
+			mute_fmt = optarg;
 		}
 	}
 
