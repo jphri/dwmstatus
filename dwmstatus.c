@@ -69,15 +69,19 @@ newproc(const char *command)
 static void
 sigtrap(int sig)
 {
+	Process *next;
 	if(sig != SIGINT)
 		return;
 
-	for(Process *p = list; p; p = p->next) {
+	next = NULL;
+	for(Process *p = list; p; p = next) {
+		next = p->next;
 		killpg(p->pid, sig);
+		free(p->stext);
+		free(p);
 	}
 	while(wait(NULL) != -1 || errno == EINTR);
 
-	/* let the operating take care of the memory leak, fuck it */
 	exit(EXIT_SUCCESS);
 }
 
