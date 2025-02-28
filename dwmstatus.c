@@ -1,9 +1,11 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <signal.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <sys/select.h>
@@ -16,7 +18,9 @@ struct Process {
 	int fd;
 	Process *next;
 	char *stext;
-	int   stextresv;
+	int   stextresv, stexti;
+
+	char *ctext;
 };
 static Process *list = NULL;
 
@@ -38,6 +42,17 @@ newproc(const char *command)
 	pid_t pid;
 	if(pipe(pipes) < 0) {
 		perror("pipe()");
+		exit(EXIT_FAILURE);
+	}
+
+	int flags = fcntl(pipes[0], F_GETFL, 0);
+	if(flags < 0) {
+		perror("fcntl()");
+		exit(EXIT_FAILURE);
+	}
+
+	if(fcntl(pipes[0], F_SETFL, flags | O_NONBLOCK) < 0) {
+		perror("fcntl()");
 		exit(EXIT_FAILURE);
 	}
 
@@ -89,18 +104,32 @@ sigtrap(int sig)
 	exit(EXIT_SUCCESS);
 }
 
+void
+print_status()
+{
+	printf("%s", leftpad);
+	for(Process *p = list; p; p = p->next)
+		printf("%s%s", p->ctext != NULL ? p->ctext : "(null)" , p->next ? separator : "");
+	printf("%s\n", rightpad);
+	fflush(stdout);
+}
+
 int
 linerd(Process *p)
 {
 	int i;
 	char c;
 
-	for(i = 0;; i++) {
+	for(i = 0; i < 32; i++) {
 		if(read(p->fd, &c, sizeof c) <= 0) {
-			break;
+			if(errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+			else {
+				return -1;
+			}
 		}
 
-		if(i >= p->stextresv) {
+		if(p->stexti >= p->stextresv) {
 			p->stextresv *= 2;
 			p->stext = realloc(p->stext, p->stextresv);
 			if(!p->stext) {
@@ -110,10 +139,20 @@ linerd(Process *p)
 		}
 
 		if(c == '\n') {
-			p->stext[i] = 0;
+			if(p->ctext != NULL)
+				free(p->ctext);
+			p->stext[p->stexti] = 0;
+
+			p->ctext = p->stext;
+			p->stext = malloc(1);
+			p->stextresv = 1;
+			p->stexti = 0;
+
+			print_status();
 			break;
 		}
-		p->stext[i] = c;
+
+		p->stext[p->stexti++] = c;
 	}
 	return i;
 }
@@ -174,17 +213,11 @@ main(int argc, char *argv[])
 
 		for(Process *p = list; p; p = p->next)
 			if(FD_ISSET(p->fd, &copy)) {
-				if(linerd(p) <= 0) {
+				if(linerd(p) < 0) {
 					FD_CLR(p->fd, &rdset);
 					close(p->fd);
 				}
 			}
-
-		printf("%s", leftpad);
-		for(Process *p = list; p; p = p->next)
-			printf("%s%s", p->stext, p->next ? separator : "");
-		printf("%s\n", rightpad);
-		fflush(stdout);
 	}
 	
 	return 0;
