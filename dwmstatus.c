@@ -91,13 +91,13 @@ static void
 sigtrap(int sig)
 {
 	Process *next;
-	if(sig != SIGINT)
-		return;
 
 	next = NULL;
 	for(Process *p = list; p; p = next) {
 		next = p->next;
-		killpg(p->pid, sig);
+		kill(p->pid, sig);
+		if(p->ctext)
+			free(p->ctext);
 		free(p->stext);
 		free(p);
 	}
