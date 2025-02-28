@@ -21,6 +21,8 @@ struct Process {
 	int   stextresv, stexti;
 
 	char *ctext;
+	char buffer[256];
+	int bufferi, buffersi;
 };
 static Process *list = NULL;
 
@@ -115,13 +117,25 @@ print_status()
 }
 
 int
+procnextchar(Process *p)
+{
+	if(p->bufferi >= p->buffersi) {
+		p->buffersi = read(p->fd, p->buffer, sizeof p->buffer);
+		if(p->buffersi < 0)
+			return -1;
+		p->bufferi = 0;
+	}
+	return p->buffer[p->bufferi++];
+}
+
+int
 linerd(Process *p)
 {
-	int i;
+	int i, n;
 	char c;
 
 	for(i = 0; i < 32; i++) {
-		if(read(p->fd, &c, sizeof c) <= 0) {
+		if((c = procnextchar(p)) < 0) {
 			if(errno == EAGAIN || errno == EWOULDBLOCK)
 				break;
 			else {
@@ -154,6 +168,7 @@ linerd(Process *p)
 
 		p->stext[p->stexti++] = c;
 	}
+
 	return i;
 }
 
