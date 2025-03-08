@@ -1,0 +1,40 @@
+#!/bin/sh
+
+getcpu() {
+	awk '
+		/^cpu / {
+			user=$2
+			nice=$3
+			sys=$4
+			idle=$5
+			iowait=$6
+			irq=$7
+			softirq=$8
+
+			noidle = user + nice + sys + iowait + irq + softirq 
+			total = noidle + idle
+
+			print noidle, total
+		}
+	' < /proc/stat
+}
+
+calcdiff() {
+	awk '
+		NR == 1{
+			noidle = $1
+			total = $2
+		}
+
+		NR == 2 {
+			printf "CPU: %0.02f %%\n", 100 * ($1 - noidle) / ($2 - total);
+		}
+	'
+}
+
+TIME="$1"
+
+while true;
+do
+	(getcpu && sleep "$TIME" && getcpu) | calcdiff
+done
