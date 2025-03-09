@@ -21,7 +21,7 @@ struct Process {
 	int   stextresv, stexti;
 
 	char *ctext;
-	char buffer[256];
+	unsigned char buffer[256];
 	int bufferi, buffersi;
 };
 static Process *list = NULL;
@@ -132,7 +132,7 @@ int
 linerd(Process *p)
 {
 	int i, n;
-	char c;
+	int c;
 
 	for(i = 0; i < 32; i++) {
 		if((c = procnextchar(p)) < 0) {
