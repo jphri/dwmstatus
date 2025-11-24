@@ -27,7 +27,7 @@ calcdiff() {
 		}
 
 		NR == 2 {
-			printf "CPU: %0.02f %%\n", 100 * ($1 - noidle) / ($2 - total);
+			printf "CPU: %6.2f %%\n", 100 * ($1 - noidle) / ($2 - total);
 		}
 	'
 }

@@ -6,7 +6,7 @@ getmem() {
 	/^MemAvailable:/ { available = $2; }
 
 	END {
-		printf "%d MB / %d MB\n", (available / 1024), (total / 1024);
+		printf "%8.2f MB / %8.2f MB\n", (available / 1024.0), (total / 1024.0);
 	}
 	' < /proc/meminfo
 }
